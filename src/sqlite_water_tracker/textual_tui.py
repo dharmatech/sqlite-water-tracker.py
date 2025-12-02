@@ -17,7 +17,8 @@ class WaterLogApp(App):
     BINDINGS = [
         ("q", "quit", "Quit"),
         ("r", "reload", "Reload"),
-        ("d", "drink_water", "Drink Water"),
+        ("1", "drink_water", "Drink Water"),
+        ("2", "next_view", "Next View"),
     ]
 
     def __init__(self, db_path: str, **kwargs):
@@ -84,6 +85,10 @@ class WaterLogApp(App):
 
     def action_drink_water(self) -> None:
         self._drink_water()
+
+    def action_next_view(self) -> None:
+        """Cycle to the next view."""
+        self._show_view(self.current_view + 1)
 
     # --- DB helpers -----------------------------------------------------
 
@@ -606,7 +611,7 @@ class WaterLogApp(App):
 
         elif event.button.id == "rotate-view-btn":
             # Cycle: rolling table -> log -> full -> chart -> summary -> rolling
-            self._show_view(self.current_view + 1)
+            self.action_next_view()
 
         elif event.button.id == "delete-row-btn":
             self.delete_selected_log_row()
