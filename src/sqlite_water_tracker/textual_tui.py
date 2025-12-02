@@ -17,6 +17,7 @@ class WaterLogApp(App):
     BINDINGS = [
         ("q", "quit", "Quit"),
         ("r", "reload", "Reload"),
+        ("d", "drink_water", "Drink Water"),
     ]
 
     def __init__(self, db_path: str, **kwargs):
@@ -71,9 +72,18 @@ class WaterLogApp(App):
         # Start on rolling table view
         self._show_view(0)
 
+    def _drink_water(self) -> None:
+        """Log a standard drink and refresh the views."""
+        self.insert_drink(8.0)
+        self.refresh_all()
+        self._show_view(self.current_view)
+
     def action_reload(self) -> None:
         self.refresh_all()
         self._show_view(self.current_view)
+
+    def action_drink_water(self) -> None:
+        self._drink_water()
 
     # --- DB helpers -----------------------------------------------------
 
@@ -592,9 +602,7 @@ class WaterLogApp(App):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
         if event.button.id == "drink-water-btn":
-            self.insert_drink(8.0)
-            self.refresh_all()
-            self._show_view(self.current_view)
+            self._drink_water()
 
         elif event.button.id == "rotate-view-btn":
             # Cycle: rolling table -> log -> full -> chart -> summary -> rolling
