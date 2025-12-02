@@ -4,6 +4,7 @@ import sys
 import sqlite3
 
 from textual.app import App, ComposeResult
+from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import DataTable, Header, Footer, Button, Static
 
 from textual_plotext import PlotextPlot  # <--- NEW
@@ -13,6 +14,28 @@ from sqlite_water_tracker.ensure_db import ensure_db, DEFAULT_WEIGHT_LBS  # noqa
 
 class WaterLogApp(App):
     """TUI to show latest water entries, daily totals, and rolling 24h stats."""
+
+    CSS = """
+    Screen {
+        layout: vertical;
+    }
+
+    #main-content {
+        height: 1fr;
+        layout: vertical;
+        padding: 1;
+    }
+
+    #controls {
+        height: 3;
+        layout: horizontal;
+        padding: 0 1;
+    }
+
+    #controls Button {
+        width: 1fr;
+    }
+    """
 
     BINDINGS = [
         ("q", "quit", "Quit"),
@@ -48,23 +71,22 @@ class WaterLogApp(App):
         # Clock off
         yield Header(show_clock=False)
 
-        # One title, updated when rotating views
-        yield Static("Rolling 24h", classes="section-title", id="section-title")
+        with VerticalScroll(id="main-content"):
+            # One title, updated when rotating views
+            yield Static("Rolling 24h", classes="section-title", id="section-title")
 
-        # All tables + plot are in the layout; we toggle visibility via .display
-        yield self.rolling_table
-        yield self.log_table
-        yield self.full_table
-        yield self.rolling_plot
-        yield self.summary_view
+            # All tables + plot are in the layout; we toggle visibility via .display
+            yield self.rolling_table
+            yield self.log_table
+            yield self.full_table
+            yield self.rolling_plot
+            yield self.summary_view
 
-        # View-rotation button
-        yield Button("View: Latest Drinks", id="rotate-view-btn")
-
-        yield Button("Delete Selected", id="delete-row-btn")
-
-        # Drink button (always present)
-        yield Button("Drink Water", id="drink-water-btn")
+        with Horizontal(id="controls"):
+            # View-rotation button
+            yield Button("View: Latest Drinks", id="rotate-view-btn")
+            yield Button("Delete Selected", id="delete-row-btn")
+            yield Button("Drink Water", id="drink-water-btn")
 
         yield Footer()
 
