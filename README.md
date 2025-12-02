@@ -2,6 +2,8 @@
  - Terminal app for tracking daily water consumption.
  - Written in Python using the `textual` library
  - Data stored in `sqlite`
+ - Intended for use in `termux` on Android
+ - But also works fine in any terminal
 
 # Installation
 
