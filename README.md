@@ -1,7 +1,7 @@
 
-![alt text](misc/image.png)
-![alt text](misc/image-1.png)
-![alt text](misc/image-2.png)
+<img src="misc/image.png" width="200">
+<img src="misc/image-1.png" width="200">
+<img src="misc/image-2.png" width="200">
 
 # Installation
 
