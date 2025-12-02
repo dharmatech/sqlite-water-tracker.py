@@ -84,9 +84,11 @@ class WaterLogApp(App):
 
         with Horizontal(id="controls"):
             # View-rotation button
-            yield Button("View: Latest Drinks", id="rotate-view-btn")
-            yield Button("Delete Selected", id="delete-row-btn")
+            # yield Button("View: Latest Drinks", id="rotate-view-btn")
+            yield Button("next", id="rotate-view-btn")
+            # yield Button("Delete Selected", id="delete-row-btn")
             yield Button("Drink Water", id="drink-water-btn")
+            yield Button("Del", id="delete-row-btn")
 
         yield Footer()
 
@@ -547,7 +549,8 @@ class WaterLogApp(App):
             delete_button.display = False  # hide here
 
             title_widget.update("Rolling 24h")
-            rotate_button.label = "View: Latest Drinks"
+            # rotate_button.label = "View: Latest Drinks"
+            rotate_button.label = "next"
 
         elif self.current_view == 1:
             # Latest Drinks (water_log)
@@ -560,7 +563,8 @@ class WaterLogApp(App):
             delete_button.display = True  # show in this view
 
             title_widget.update("Latest Drinks (water_log)")
-            rotate_button.label = "View: Daily Totals"
+            # rotate_button.label = "View: Daily Totals"
+            rotate_button.label = "next"
 
             self.log_table.focus()
 
@@ -575,7 +579,8 @@ class WaterLogApp(App):
             delete_button.display = False
 
             title_widget.update("Daily Totals (water_log_full)")
-            rotate_button.label = "View: Rolling Chart"
+            # rotate_button.label = "View: Rolling Chart"
+            rotate_button.label = "next"
 
         elif self.current_view == 3:
             # Rolling 24h chart view (Plotext)
@@ -588,7 +593,8 @@ class WaterLogApp(App):
             delete_button.display = False
 
             title_widget.update("Rolling 24h Chart")
-            rotate_button.label = "View: 24h Summary"
+            # rotate_button.label = "View: 24h Summary"
+            rotate_button.label = "next"
 
         else:
             # Last 24 hours summary card
@@ -601,7 +607,8 @@ class WaterLogApp(App):
             delete_button.display = False
 
             title_widget.update("Last 24 Hours Summary")
-            rotate_button.label = "View: Rolling 24h"
+            # rotate_button.label = "View: Rolling 24h"
+            rotate_button.label = "next"
 
 
     # --- Events ---------------------------------------------------------
