@@ -72,15 +72,17 @@ class WaterLogApp(App):
         yield Header(show_clock=False)
 
         with VerticalScroll(id="main-content"):
+            # All tables + plot are in the layout; we toggle visibility via .display
+            yield self.summary_view
+
             # One title, updated when rotating views
             yield Static("Rolling 24h", classes="section-title", id="section-title")
 
-            # All tables + plot are in the layout; we toggle visibility via .display
             yield self.rolling_table
             yield self.log_table
             yield self.full_table
             yield self.rolling_plot
-            yield self.summary_view
+            
             yield Button("Del", id="delete-row-btn")
 
         with Horizontal(id="controls"):
@@ -532,7 +534,8 @@ class WaterLogApp(App):
 
     def _show_view(self, index: int) -> None:
         """Show one of the five views based on index 0–4."""
-        self.current_view = index % 5
+        # self.current_view = index % 5
+        self.current_view = index % 4
 
         title_widget = self.query_one("#section-title", Static)
         rotate_button = self.query_one("#rotate-view-btn", Button)
