@@ -1,7 +1,7 @@
 
-<img src="misc/image.png" width="200">
-<img src="misc/image-1.png" width="200">
-<img src="misc/image-2.png" width="200">
+ - Terminal app for tracking daily water consumption.
+ - Written in Python using the `textual` library
+ - Data stored in `sqlite`
 
 # Installation
 
@@ -25,3 +25,9 @@ https://youtu.be/qt_PNr1Wz1Q
 Older video:
 
 https://youtu.be/sTj1FalZMVw
+
+# Screenshots
+
+<img src="misc/image.png" width="200">
+<img src="misc/image-1.png" width="200">
+<img src="misc/image-2.png" width="200">
