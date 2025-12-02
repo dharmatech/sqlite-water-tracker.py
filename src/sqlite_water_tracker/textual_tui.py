@@ -81,6 +81,7 @@ class WaterLogApp(App):
             yield self.full_table
             yield self.rolling_plot
             yield self.summary_view
+            yield Button("Del", id="delete-row-btn")
 
         with Horizontal(id="controls"):
             # View-rotation button
@@ -88,7 +89,7 @@ class WaterLogApp(App):
             yield Button("next", id="rotate-view-btn")
             # yield Button("Delete Selected", id="delete-row-btn")
             yield Button("Drink Water", id="drink-water-btn")
-            yield Button("Del", id="delete-row-btn")
+            # yield Button("Del", id="delete-row-btn")
 
         yield Footer()
 
