@@ -8,6 +8,8 @@ from textual.widgets import DataTable, Header, Footer, Button, Static
 
 from textual_plotext import PlotextPlot  # <--- NEW
 
+from sqlite_water_tracker.ensure_db import ensure_db, DEFAULT_WEIGHT_LBS  # noqa: E402
+
 
 class WaterLogApp(App):
     """TUI to show latest water entries, daily totals, and rolling 24h stats."""
@@ -353,18 +355,8 @@ class WaterLogApp(App):
 
         total_oz, weight, target_oz, percent = row
 
-        # If total_oz is None, it usually means no drinks in the last 24 hours.
-        if total_oz is None:
-            # You can still show target/weight if you like, or keep it simple.
-            self.summary_view.update(
-                "Last 24 hours\n"
-                "  No drinks logged in the last 24 hours.\n"
-                "  Log some water to see your progress here."
-            )
-            return
-
-        # Be defensive about the others too
-        weight = 0.0 if weight is None else float(weight)
+        total_oz = 0.0 if total_oz is None else float(total_oz)
+        weight = DEFAULT_WEIGHT_LBS if weight is None else float(weight)
         target_oz = 0.0 if target_oz is None else float(target_oz)
         percent = 0.0 if percent is None else float(percent)
 
@@ -374,6 +366,9 @@ class WaterLogApp(App):
             f"  Target: {target_oz:.1f} oz  ({percent:.1f}% of target)\n"
             f"  Weight: {weight:.1f} lbs"
         )
+
+        if total_oz <= 0:
+            text += "\n  No drinks logged in the last 24 hours."
 
         self.summary_view.update(text)
 
@@ -608,8 +603,6 @@ class WaterLogApp(App):
         elif event.button.id == "delete-row-btn":
             self.delete_selected_log_row()
 
-
-from sqlite_water_tracker.ensure_db import ensure_db  # noqa: E402
 
 if __name__ == "__main__":
     db_path = sys.argv[1] if len(sys.argv) > 1 else "sqlite-water-tracker.db"
