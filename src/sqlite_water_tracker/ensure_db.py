@@ -30,12 +30,42 @@ def seed_default_weight(conn: sqlite3.Connection, default_weight: float = DEFAUL
 
 
 def ensure_db(db_path: str) -> None:
-    """Create / update the SQLite database schema if needed."""
+    """Create the SQLite database schema if needed, otherwise leave it alone."""
     conn = sqlite3.connect(db_path)
     try:
-        schema_sql = load_schema_text()
-        conn.executescript(schema_sql)
-        seed_default_weight(conn)
+        cur = conn.cursor()
+
+        # Is the main table already there?
+        cur.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table' AND name = 'water_log'
+            """
+        )
+        has_water_log = cur.fetchone() is not None
+
+        if not has_water_log:
+            # New or uninitialized DB: apply full schema
+            schema_sql = load_schema_text()
+            conn.executescript(schema_sql)
+            # After schema is in place, seed default weight
+            seed_default_weight(conn)
+            conn.commit()
+            return
+
+        # DB already initialized. Optionally ensure weight is seeded
+        cur.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table' AND name = 'user_weight'
+            """
+        )
+        has_user_weight = cur.fetchone() is not None
+        if has_user_weight:
+            seed_default_weight(conn)
+
         conn.commit()
     finally:
         conn.close()
