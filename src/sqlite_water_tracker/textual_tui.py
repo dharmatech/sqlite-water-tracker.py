@@ -1,7 +1,10 @@
 # water_log_tui.py
 
-import sys
+import argparse
 import sqlite3
+import subprocess
+import sys
+from pathlib import Path
 
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll
@@ -10,6 +13,83 @@ from textual.widgets import DataTable, Header, Footer, Button, Static
 from textual_plotext import PlotextPlot  # <--- NEW
 
 from sqlite_water_tracker.ensure_db import ensure_db, DEFAULT_WEIGHT_LBS  # noqa: E402
+
+
+class GitStorage:
+    """Optionally git add/commit/push the DB file after a write."""
+
+    def __init__(self, db_path: str, enabled: bool = False):
+        self.enabled = enabled
+        self.db_path = Path(db_path).resolve()
+        self.repo_root = self._detect_repo_root() if enabled else None
+        self.rel_db_path = (
+            self.db_path.relative_to(self.repo_root) if self.repo_root else None
+        )
+
+    def _detect_repo_root(self):
+        db_dir = self.db_path.parent
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(db_dir), "rev-parse", "--show-toplevel"],
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError:
+            return None
+        if result.returncode != 0:
+            return None
+
+        repo_root = Path(result.stdout.strip()).resolve()
+        try:
+            self.db_path.relative_to(repo_root)
+        except ValueError:
+            return None
+        return repo_root
+
+    def _file_has_changes(self) -> bool:
+        if not (self.repo_root and self.rel_db_path):
+            return False
+        result = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(self.repo_root),
+                "status",
+                "--porcelain",
+                "--",
+                str(self.rel_db_path),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        return bool(result.stdout.strip())
+
+    def record_change(self) -> None:
+        """Run git add/commit/push if enabled and the DB changed."""
+        if not (self.enabled and self.repo_root and self.rel_db_path):
+            return
+        if not self._file_has_changes():
+            return
+
+        commands = [
+            ["git", "-C", str(self.repo_root), "add", str(self.rel_db_path)],
+            ["git", "-C", str(self.repo_root), "commit", "-m", "database changed"],
+            ["git", "-C", str(self.repo_root), "push"],
+        ]
+
+        for cmd in commands:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                msg = result.stderr.strip() or result.stdout.strip()
+                print(
+                    f"[git storage] Command failed: {' '.join(cmd)} ({msg})",
+                    file=sys.stderr,
+                )
+                break
 
 
 class WaterLogApp(App):
@@ -44,9 +124,10 @@ class WaterLogApp(App):
         ("2", "next_view", "Next View"),
     ]
 
-    def __init__(self, db_path: str, **kwargs):
+    def __init__(self, db_path: str, git_storage: GitStorage | None = None, **kwargs):
         super().__init__(**kwargs)
         self.db_path = db_path
+        self.git_storage = git_storage
 
         # 0 = rolling table, 1 = log table, 2 = full table, 3 = rolling chart
         self.current_view = 0
@@ -135,6 +216,7 @@ class WaterLogApp(App):
                 (ounces,),
             )
             conn.commit()
+            self._record_git_change()
         finally:
             conn.close()
 
@@ -243,6 +325,8 @@ class WaterLogApp(App):
             conn.commit()
         finally:
             conn.close()
+
+        self._record_git_change()
 
         # Refresh anything that depends on water_log
         self.refresh_log_table()
@@ -649,9 +733,37 @@ class WaterLogApp(App):
         elif event.button.id == "delete-row-btn":
             self.delete_selected_log_row()
 
+    # --- Git helpers ----------------------------------------------------
+
+    def _record_git_change(self) -> None:
+        if self.git_storage:
+            self.git_storage.record_change()
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Water tracker TUI")
+    parser.add_argument(
+        "db_path",
+        nargs="?",
+        default="sqlite-water-tracker.db",
+        help="Path to the sqlite database file",
+    )
+    parser.add_argument(
+        "--git-storage",
+        action="store_true",
+        help="git add/commit/push the DB file after each change",
+    )
+    return parser.parse_args(argv)
+
 
 if __name__ == "__main__":
-    db_path = sys.argv[1] if len(sys.argv) > 1 else "sqlite-water-tracker.db"
-    ensure_db(db_path)
-    app = WaterLogApp(db_path)
+    args = parse_args(sys.argv[1:])
+    db_path = args.db_path
+    git_storage = GitStorage(db_path, enabled=args.git_storage)
+
+    ensure_db_changed = ensure_db(db_path)
+    if ensure_db_changed:
+        git_storage.record_change()
+
+    app = WaterLogApp(db_path, git_storage=git_storage)
     app.run()

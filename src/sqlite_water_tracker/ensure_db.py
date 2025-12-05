@@ -11,13 +11,13 @@ def load_schema_text() -> str:
     return (files("sqlite_water_tracker") / "schema.sql").read_text(encoding="utf-8")
 
 
-def seed_default_weight(conn: sqlite3.Connection, default_weight: float = DEFAULT_WEIGHT_LBS) -> None:
+def seed_default_weight(conn: sqlite3.Connection, default_weight: float = DEFAULT_WEIGHT_LBS) -> bool:
     """Insert a default weight row if none exist."""
     cur = conn.cursor()
     cur.execute("SELECT COUNT(*) FROM user_weight")
     row = cur.fetchone()
     if not row or row[0] > 0:
-        return
+        return False
 
     cur.execute(
         """
@@ -26,14 +26,18 @@ def seed_default_weight(conn: sqlite3.Connection, default_weight: float = DEFAUL
         """,
         (default_weight,),
     )
-    conn.commit()
+    return True
 
 
-def ensure_db(db_path: str) -> None:
-    """Create the SQLite database schema if needed, otherwise leave it alone."""
+def ensure_db(db_path: str) -> bool:
+    """Create the SQLite database schema if needed, otherwise leave it alone.
+
+    Returns True if the DB was modified.
+    """
     conn = sqlite3.connect(db_path)
     try:
         cur = conn.cursor()
+        changed = False
 
         # Is the main table already there?
         cur.execute(
@@ -49,10 +53,12 @@ def ensure_db(db_path: str) -> None:
             # New or uninitialized DB: apply full schema
             schema_sql = load_schema_text()
             conn.executescript(schema_sql)
+            changed = True
             # After schema is in place, seed default weight
-            seed_default_weight(conn)
+            if seed_default_weight(conn):
+                changed = True
             conn.commit()
-            return
+            return changed
 
         # DB already initialized. Optionally ensure weight is seeded
         cur.execute(
@@ -64,8 +70,10 @@ def ensure_db(db_path: str) -> None:
         )
         has_user_weight = cur.fetchone() is not None
         if has_user_weight:
-            seed_default_weight(conn)
+            if seed_default_weight(conn):
+                changed = True
 
         conn.commit()
+        return changed
     finally:
         conn.close()
