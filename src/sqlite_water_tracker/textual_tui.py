@@ -4,6 +4,7 @@ import argparse
 import sqlite3
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from textual.app import App, ComposeResult
@@ -18,8 +19,15 @@ from sqlite_water_tracker.ensure_db import ensure_db, DEFAULT_WEIGHT_LBS  # noqa
 class GitStorage:
     """Optionally git add/commit/push the DB file after a write."""
 
-    def __init__(self, db_path: str, enabled: bool = False):
+    def __init__(
+        self,
+        db_path: str,
+        enabled: bool = False,
+        pull_interval_seconds: float = 60.0,
+    ):
         self.enabled = enabled
+        self.pull_interval_seconds = pull_interval_seconds
+        self._last_pull_monotonic: float | None = None
         self.db_path = Path(db_path).resolve()
         self.repo_root = self._detect_repo_root() if enabled else None
         self.rel_db_path = (
@@ -63,6 +71,34 @@ class GitStorage:
             text=True,
         )
         return bool(result.stdout.strip())
+
+    def maybe_pull(self) -> bool:
+        """Run git pull if the interval has elapsed. Returns True if a pull ran."""
+        if not self.repo_root:
+            return False
+
+        now = time.monotonic()
+        if self._last_pull_monotonic is not None:
+            if now - self._last_pull_monotonic < self.pull_interval_seconds:
+                return False
+
+        self._last_pull_monotonic = now
+
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(self.repo_root), "pull", "--ff-only"],
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError:
+            return False
+
+        if result.returncode != 0:
+            msg = result.stderr.strip() or result.stdout.strip()
+            print(f"[git storage] git pull failed: {msg}", file=sys.stderr)
+            return False
+
+        return True
 
     def record_change(self) -> None:
         """Run git add/commit/push if enabled and the DB changed."""
@@ -342,6 +378,7 @@ class WaterLogApp(App):
     # --- Table & plot refreshers ---------------------------------------
 
     def refresh_all(self) -> None:
+        self._maybe_git_pull()
         self.refresh_log_table()
         self.refresh_full_table()
         self.refresh_rolling_table()
@@ -617,7 +654,8 @@ class WaterLogApp(App):
 
 
     def _show_view(self, index: int) -> None:
-        """Show one of the five views based on index 0–4."""
+        """Show one of the five views based on index 0-4."""
+        self._maybe_pull_then_refresh()
         # self.current_view = index % 5
         self.current_view = index % 4
 
@@ -738,6 +776,15 @@ class WaterLogApp(App):
     def _record_git_change(self) -> None:
         if self.git_storage:
             self.git_storage.record_change()
+
+    def _maybe_git_pull(self) -> bool:
+        if not self.git_storage:
+            return False
+        return self.git_storage.maybe_pull()
+
+    def _maybe_pull_then_refresh(self) -> None:
+        if self._maybe_git_pull():
+            self.refresh_all()
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
